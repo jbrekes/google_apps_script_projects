@@ -2,7 +2,13 @@
 
 This project consists of an automation solution for a client's travel booking spreadsheet. The goal was to create a preview of the data in the same spreadsheet, allowing the client to evaluate each trip separately, and to be able to create a new report on demand by specifying the code of a single trip.
 
+The original spreadsheet contained more than 30 columns and required a lot of formatting
 
+![Master Spreadsheet](https://github.com/jbrekes/google_apps_script_projects/blob/main/travel_summary_report_generation/Master%20Spreadsheet.png)
+
+And finally we were able to generate reports with a specific format, including the application of conditional formatting and validation rules.
+
+![Final Report Template](https://github.com/jbrekes/google_apps_script_projects/blob/main/travel_summary_report_generation/Final%20Product.png)
 
 ## Solution &nbsp; 🛠️
 
