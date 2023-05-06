@@ -1,5 +1,5 @@
-const FOLDERID = '1MOJ1iYrawLfAcVrqzSfNM8wM-zqXion1' 
-const MASTERFILEID = '128b5K-8EgYNvDlTmHcWsN8dYCSUI0Fd4dtTfDucT6vQ';
+const FOLDERID = 'YOUR_FOLDER_ID'; // The folder ID where the generated reports will be stored
+const MASTERFILEID = 'YOUR_MASTER_SPREADSHEET_ID'; //  The ID of the master file spreadsheet containing the source data to which the projects will be linked
 
 function checkExistingFiles() {
   var folder = DriveApp.getFolderById(FOLDERID);
