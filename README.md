@@ -1,2 +1,2 @@
-# google_apps_script_projects
+# Google Apps Script Projects
 Personal and Freelance projects made in Google Apps Script
