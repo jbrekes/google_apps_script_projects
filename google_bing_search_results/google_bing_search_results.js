@@ -1,8 +1,8 @@
-var masterSpreadsheetId = '1wJP6O5qhtzVc3YGNGrXR2fOhOPXadEBK2rlXllAt-Bs';
+var masterSpreadsheetId = 'YOUR_MASTER_SPREADSHEET_ID'; 
 
 function GetGoogleNewsCounts(search, monthAndYear) {
     if(search != "" && monthAndYear != ""){
-        const url = 'https://google-news-counter-3jawyeerkq-uc.a.run.app';
+        const url = 'CLOUD_FUNCTIONS_GOOGLE_SEARCH_APP_URL';
         const options = {
         "method": "post",
         "payload": {
@@ -20,7 +20,7 @@ function GetGoogleNewsCounts(search, monthAndYear) {
   
 function GetBingNewsCounts(search, monthAndYear) {
     if(search != "" && monthAndYear != ""){
-        const url = 'https://bing-news-counter-3jawyeerkq-uc.a.run.app';
+        const url = 'CLOUD_FUNCTIONS_BING_SEARCH_APP_URL';
         const options = {
         "method": "post",
         "payload": {
@@ -104,7 +104,7 @@ function updateBDD() {
 
     // Get all saved ids
 
-    var bdd_sheet = SpreadsheetApp.openById('1wJP6O5qhtzVc3YGNGrXR2fOhOPXadEBK2rlXllAt-Bs').getSheetByName('BDD');
+    var bdd_sheet = SpreadsheetApp.openById(masterSpreadsheetId).getSheetByName('BDD');
 
     var saved_ids = bdd_sheet.getRange('B:B')
     var saved_ids_values = saved_ids.getValues()
