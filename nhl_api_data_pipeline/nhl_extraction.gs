@@ -1,6 +1,6 @@
 function updateTeamsAndInjuries(){
-    var spreadsheet_id = '1a2NpAaysxopZlw93Nwbx9rQxD-GMbV3_vbeAZbZxCYc';
-  
+    var spreadsheet_id = NHLConfigs.spreadsheetID();
+ 
     // Update Teams Data
     var teams = getTeamsData();
     var teams_sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("teams");
@@ -61,131 +61,93 @@ function updateTeamsAndInjuries(){
     i_range.setValues(inj_table);
   }
   
-function getInjuredPlayers(){
+function getInjuredPlayers() {
   var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
-  // var spreadsheet_id = '1a2NpAaysxopZlw93Nwbx9rQxD-GMbV3_vbeAZbZxCYc';
-  // var sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("current_injuries");
+  var url = 'https://statsapi.web.nhl.com';
+  var teams_endpoint = '/api/v1/teams';
 
-  //Get Teams Full Names
-  var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
-  var url = 'https://statsapi.web.nhl.com'
-  var teams_endpoint = '/api/v1/teams'
-
-  // Get Main Team Data
-  var response = UrlFetchApp.fetch(url + teams_endpoint);
-
-  var json = response.getContentText();
-  var data = JSON.parse(json);
-
-  var teams = [];
-  for (var i in data['teams']) {
-    // Get team base info
-    var team_name = data['teams'][i]['name'];
-    teams.push(team_name);
+  function fetchJSON(endpoint) {
+    var response = UrlFetchApp.fetch(url + endpoint);
+    return JSON.parse(response.getContentText());
   }
 
-  // Scrape Injuries Data
+  // Get Teams Full Names
+  var teamsData = fetchJSON(teams_endpoint);
+  var teams = teamsData.teams.map(function(teamData) {
+    return teamData.name;
+  });
 
+  // Scrape Injuries Data
   var injuries_url = 'https://www.cbssports.com/nhl/injuries/';
   var response = UrlFetchApp.fetch(injuries_url).getContentText();
-
-  var $ = Cheerio.load(response)
+  var $ = Cheerio.load(response);
 
   // Extract Data
-
   var injured_players = [];
 
-  var teams_names_scrap = $(".TableBase").each((i,element) => {
-    var t_name = $(element).find('.TeamName').find('a').text();
+  $(".TableBase").each(function(i, element) {
+    var t_name = $(element).find('.TeamName a').text();
+    var t_name_fix = t_name;
 
     // Replace Scraped team name with the original version
-    if (t_name === 'Montreal'){
-      var t_name_fix = ['Montréal Canadiens'] 
-    } else if (t_name === 'N.Y. Islanders'){
-        var t_name_fix = ['New York Islanders']
-    } else if (t_name === 'N.Y. Rangers'){
-        var t_name_fix = ['New York Rangers']
-    } else {
-        for (var i = 0; i < teams.length; i++){
-          if (teams[i].includes(t_name)){
-            var t_name_fix = [teams[i]];
-          }
-        }
+    var fixedTeam = teams.find(function(team) {
+      return team.includes(t_name);
+    });
+
+    if (fixedTeam) {
+      t_name_fix = fixedTeam;
     }
 
-    var players_names = []
-    var player_names = $(element).find('.TableBase-bodyTd .CellPlayerName--long').each((i, el) => {
-      players_names.push($(el).text())
+    var players_names = [];
+    $(element).find('.TableBase-bodyTd .CellPlayerName--long').each(function(i, el) {
+      players_names.push($(el).text());
     });
 
-    var players_positions = []
-    var player_pos = $(element).find('.TableBase-bodyTd').each((j,pos) => {
+    var players_positions = [];
+    $(element).find('.TableBase-bodyTd').each(function(j, pos) {
       var pos_temp = $(pos).text().trim();
-
-      if (pos_temp.length <= 2){
-        players_positions.push(pos_temp)
-      } else {
-        // Nothing
+      if (pos_temp.length <= 2) {
+        players_positions.push(pos_temp);
       }
     });
 
-    var last_update = []
-    var updates = $(element).find('.TableBase-bodyTd .CellGameDate').each((k, up) => {
-      last_update.push($(up).text().trim())
-    });
-    
-    var injury_status = []
-    var inj_stat = $(element).find('.TableBase-bodyTr').each((l,stat) => {
-      status = $(stat).find('.TableBase-bodyTd').last().text().trim()
-      injury_status.push(status)
+    var last_update = [];
+    $(element).find('.TableBase-bodyTd .CellGameDate').each(function(k, up) {
+      last_update.push($(up).text().trim());
     });
 
-    var injury_type = []
-    var inj_type = $(element).find('.TableBase-bodyTd').next().next().next().each((m,inj) => {
+    var injury_status = [];
+    $(element).find('.TableBase-bodyTr').each(function(l, stat) {
+      var status = $(stat).find('.TableBase-bodyTd').last().text().trim();
+      injury_status.push(status);
+    });
+
+    var injury_type = [];
+    $(element).find('.TableBase-bodyTd').next().next().next().each(function(m, inj) {
       var inj_temp = $(inj).text().trim();
-
-      if (injury_status.indexOf(inj_temp) === -1){
-        injury_type.push(inj_temp)
-      } else {
-        // Nothing
+      if (injury_status.indexOf(inj_temp) === -1) {
+        injury_type.push(inj_temp);
       }
     });
 
-    for (var i = 0; i < players_names.length; i ++){
+    for (var i = 0; i < players_names.length; i++) {
       var injured_temp = {
         'process_dt': process_dt,
-        'team_name': t_name_fix[0],
+        'team_name': t_name_fix,
         'player_name': players_names[i],
         'player_position': players_positions[i],
         'injury_name': injury_type[i],
         'injury_status': injury_status[i],
         'last_update': last_update[i]
-      }
+      };
 
-      injured_players.push(injured_temp)
-
+      injured_players.push(injured_temp);
     }
   });
+
   return injured_players;
-  // // Add all data to the spreadsheet
-  // var c = Object.keys(injured_players[0]).length
-  // var r = injured_players.length
-
-  // // Delete Previous Information (just to be sure)
-  // var del_range = sheet.getRange(2,1,500,10);
-  // del_range.clear();
-
-  // // Get a range for the second row
-  // var range = sheet.getRange(2,1,r,c);
-
-  // // Create a list of lists that represents the table:
-  // var table = injured_players.map(function(injured_players){
-  //   return [injured_players.process_dt, injured_players.team_name, injured_players.player_name, injured_players.player_position, injured_players.injury_name, injured_players.injury_status, injured_players.last_update] 
-  // })
-
-  // // Insert values into Sheet
-  // range.setValues(table)
 };
+  
 
 function getTeamsData() {
   var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
@@ -303,141 +265,120 @@ function getTeamsData() {
   return teams;
 }
 
-function startingGoaliesScrap(){
+function startingGoaliesScrap() {
   var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
   var year = new Date().getFullYear();
-  var sg_url = 'https://www.rotowire.com/hockey/starting-goalies.php?view=teams'
+  var sg_url = 'https://www.rotowire.com/hockey/starting-goalies.php?view=teams';
   var sg_response = UrlFetchApp.fetch(sg_url).getContentText();
 
-  var $ = Cheerio.load(sg_response)
+  var $ = Cheerio.load(sg_response);
 
-  // Get dates
-  var dates = []
-  $('.proj-day-head').each((i,dt) => {
-    temp = $(dt).text();
-
-    if (temp === 'Today'){
-      dates.push(process_dt)
-    } else{
-      // Get just the short date
-      temp = temp.substring(3)
-      // Adapt format
-      temp = new Date(Date.parse(temp));
-      temp = Utilities.formatDate(temp, "GMT", "YYYY-MM-dd").replace(/^.{4}/, year);
-      // Add to list
-      dates.push(temp);
-    };    
-  });
-
-  // Fix for when we change year
-  for (var i = 0; i < (dates.length - 1); i++){
-    if (dates[i] > dates[i+1]){
-      dates[i+1] = dates[i+1].replace(/^.{4}/, year+1);
+  function getFormattedDate(dateString) {
+    if (dateString === 'Today') {
+      return process_dt;
     } else {
-      // Nothing
-    };
-  };
+      var temp = new Date(Date.parse(dateString));
+      temp = Utilities.formatDate(temp, "GMT", "YYYY-MM-dd").replace(/^.{4}/, year);
+      return temp;
+    }
+  }
 
-  // Schedule By team for next week
+  var dates = $('.proj-day-head').map(function(i, dt) {
+    return getFormattedDate($(dt).text().trim().substring(3));
+  }).get();
 
-  // Goalie Name
-  gk_data = []
+  // Fix for changing year
+  for (var i = 0; i < (dates.length - 1); i++) {
+    if (dates[i] > dates[i + 1]) {
+      dates[i + 1] = dates[i + 1].replace(/^.{4}/, year + 1);
+    }
+  }
 
-  $('.goalies-inner-row').each((i,item) => {
+  var gk_data = $('.goalies-inner-row').map(function(i, item) {
+    var gk_names = [];
+    var gk_status = [];
 
-    gk_names = []
-    gk_status = []
-
-    name = $(item).find('.goalie-item').each((j,temp) => {
-      // Goalie Name
-      gk_names.push($(temp).find('a').text().trim())
-      // Goalie Status
-      gk_status.push($(temp).find('.sm-text').last().text().trim())
+    $(item).find('.goalie-item').each(function(j, temp) {
+      gk_names.push($(temp).find('a').text().trim());
+      gk_status.push($(temp).find('.sm-text').last().text().trim());
     });
 
-    for (var i = 0; i < gk_names.length; i ++){
-      gk = {
+    return gk_names.map(function(gk_name, i) {
+      var gk = {
         'gk_date': dates[i],
-        'gk_name': gk_names[i],
+        'gk_name': gk_name,
         'gk_status': gk_status[i]
-      }
-      if (!(gk['gk_name'] === "")){
-        gk_data.push(gk)
-      } else {
-        // Nothing
-      }
-    }
-    
-  });
-  return gk_data
+      };
+      return gk['gk_name'] !== "" ? gk : null;
+    });
+  }).get().flat();
+
+  return gk_data;
 };
 
-function gamesSchedule(){
-  var gk_scrap = startingGoaliesScrap();
-  var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
-  var sch_url = 'https://statsapi.web.nhl.com';
-  var sch_endpoint = '/api/v1/schedule';
 
-  var days_back = 5
-  var days_forward = 60
+function gamesSchedule() {
+  const gk_scrap = startingGoaliesScrap();
+  const process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
+  const sch_url = 'https://statsapi.web.nhl.com';
+  const sch_endpoint = '/api/v1/schedule';
 
-  var today = new Date();
+  const days_back = 5;
+  const days_forward = 60;
+
+  const today = new Date();
   const MILLIS_PER_DAY = 1000 * 60 * 60 * 24;
-  var start_dt = Utilities.formatDate(new Date(today.getTime() - MILLIS_PER_DAY * days_back), "GMT", "YYYY-MM-dd");
-  var end_dt = Utilities.formatDate(new Date(today.getTime() + MILLIS_PER_DAY * days_forward), "GMT", "YYYY-MM-dd");
+  let start_dt = Utilities.formatDate(new Date(today.getTime() - MILLIS_PER_DAY * days_back), "GMT", "YYYY-MM-dd");
+  const end_dt = Utilities.formatDate(new Date(today.getTime() + MILLIS_PER_DAY * days_forward), "GMT", "YYYY-MM-dd");
 
-  games_sch = []
+  const games_sch = [];
 
-  while (start_dt < end_dt){
-
-    // Create a temp end date so we process smaller ranges
-    end_dt_temp = new Date(start_dt);
+  while (start_dt < end_dt) {
+    let end_dt_temp = new Date(start_dt);
     end_dt_temp = Utilities.formatDate(new Date(end_dt_temp.getTime() + MILLIS_PER_DAY * 29), "GMT", "YYYY-MM-dd");
-    if (end_dt_temp > end_dt){
-      end_dt_temp = end_dt
-    };
+    if (end_dt_temp > end_dt) {
+      end_dt_temp = end_dt;
+    }
 
-    var request_url = sch_url +  sch_endpoint + '?startDate=' + start_dt + '&endDate=' + end_dt_temp;
-    var response = UrlFetchApp.fetch(request_url);
-    var json = response.getContentText();
-    var data = JSON.parse(json);
+    const request_url = `${sch_url}${sch_endpoint}?startDate=${start_dt}&endDate=${end_dt_temp}`;
+    const response = UrlFetchApp.fetch(request_url);
+    const json = response.getContentText();
+    const data = JSON.parse(json);
 
-    for (var i in data['dates']){
-      dt = data['dates'][i]
-      d = dt['date']
+    for (const date of data.dates) {
+      const d = date.date;
 
-      for (var game in dt['games']){
-        g = dt['games'][game];
-
-        var game_temp = {
-          'game_pk': String(g['gamePk']),
-          'game_type': g['gameType'],
-          'game_type_desc': g['gameType'] == 'R' ? 'Regular Season' :
-                            g['gameType'] == 'P' ? 'Playoffs' :
-                            g['gameType'] == 'PR' ? 'Pre-season' : 'Other',
-          'game_season': g['season'],
-          'game_date': d,
-          'game_date_utc': g['gameDate'],
-          'away_team_id': g['teams']['away']['team']['id'],
-          'away_team_name': g['teams']['away']['team']['name'],
-          'away_team_score': g['teams']['away']['score'],
-          'home_team_id': g['teams']['home']['team']['id'],
-          'home_team_name': g['teams']['home']['team']['name'],
-          'home_team_score': g['teams']['home']['score']
-        }
+      for (const game of date.games) {
+        const game_temp = {
+          game_pk: String(game.gamePk),
+          game_type: game.gameType,
+          game_type_desc: game.gameType === 'R' ? 'Regular Season' :
+                          game.gameType === 'P' ? 'Playoffs' :
+                          game.gameType === 'PR' ? 'Pre-season' : 'Other',
+          game_season: game.season,
+          game_date: d,
+          game_date_utc: game.gameDate,
+          away_team_id: game.teams.away.team.id,
+          away_team_name: game.teams.away.team.name,
+          away_team_score: game.teams.away.score,
+          home_team_id: game.teams.home.team.id,
+          home_team_name: game.teams.home.team.name,
+          home_team_score: game.teams.home.score
+        };
 
         games_sch.push(game_temp);
-      };
-    };
+      }
+    }
 
-    // Next Start Date
     start_dt = new Date(start_dt);
     start_dt = Utilities.formatDate(new Date(start_dt.getTime() + MILLIS_PER_DAY * 30), "GMT", "YYYY-MM-dd");
-  };
-  for (var i in games_sch){
-    games_sch[i]['process_dt'] = process_dt;
-  };
-  return games_sch
+  }
+
+  for (const game of games_sch) {
+    game.process_dt = process_dt;
+  }
+
+  return games_sch;
 };
 
 function goalkeepersByTeam(){
@@ -725,141 +666,146 @@ function goalkeepersByTeam(){
   return games_sch
 };
 
-function updateScheduleToSheet(){
-  var games_sch = goalkeepersByTeam();
-  var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
-  var days_back = 5;
-  var today = new Date();
+function updateScheduleToSheet() {
+  const games_sch = goalkeepersByTeam();
+  const process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
+  const days_back = 5;
+  const today = new Date();
   const MILLIS_PER_DAY = 1000 * 60 * 60 * 24;
-  var start_dt = Utilities.formatDate(new Date(today.getTime() - MILLIS_PER_DAY * days_back), "GMT", "YYYY-MM-dd");
-  var spreadsheet_id = '1a2NpAaysxopZlw93Nwbx9rQxD-GMbV3_vbeAZbZxCYc';
-  var sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("game_schedule");
+  let start_dt = Utilities.formatDate(new Date(today.getTime() - MILLIS_PER_DAY * days_back), "GMT", "YYYY-MM-dd");
+  const spreadsheet_id = NHLConfigs.spreadsheetID();
+  const sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("game_schedule");
 
-  // Add all data to the spreadsheet. We will preserve the older data
-  var c = 35 // Object.keys(games_sch[0]).length;
-  var r = games_sch.length;
-  Logger.log(c)
-  Logger.log(r)
-  Logger.log(start_dt)
+  const c = 35; // Object.keys(games_sch[0]).length;
+  const r = games_sch.length;
 
   // Delete most recent data
-  var rows = sheet.getDataRange();
-  var numRows = rows.getNumRows();
-  var values = rows.getValues();
+  const rows = sheet.getDataRange();
+  const numRows = rows.getNumRows();
+  const values = rows.getValues();
 
-  var rowsDeleted = 0;
-  for (var i = 1; i <= numRows - 1; i++) {
-    var row = values[i];
-    var row_date = row[1];
+  let rowsDeleted = 0;
+  for (let i = 1; i <= numRows - 1; i++) {
+    const row = values[i];
+    let row_date = row[1];
     row_date = Utilities.formatDate(row_date, 'GMT', 'YYYY-MM-dd');
 
-    if (row_date >= start_dt){
-      sheet.deleteRow((parseInt(i)+1) - rowsDeleted);
+    if (row_date >= start_dt) {
+      sheet.deleteRow((parseInt(i) + 1) - rowsDeleted);
       rowsDeleted++;
-    };
-  };
+    }
+  }
 
-  var last_row = sheet.getLastRow();
+  const last_row = sheet.getLastRow();
+  const range = sheet.getRange(last_row + 1, 1, r, c);
 
-  // Get a range for the second row
-  var range = sheet.getRange(last_row+1,1,r,c);
+  const table = games_sch.map(function(games_sch) {
+    return [
+      games_sch.process_dt, games_sch.game_date, games_sch.game_date_utc, games_sch.game_pk,
+      games_sch.game_type, games_sch.game_type_desc, games_sch.game_season, games_sch.away_team_id,
+      games_sch.away_team_name, games_sch.away_team_score, games_sch.home_team_id, games_sch.home_team_name,
+      games_sch.home_team_score, games_sch.away_gk_name, games_sch.away_gk_id, games_sch.away_gk_games,
+      games_sch.away_gk_wins, games_sch.away_gk_losses, games_sch.away_gk_ot, games_sch.away_gk_ties,
+      games_sch.away_gk_shutouts, games_sch.away_gk_saves, games_sch.away_gk_gaa, games_sch.away_gk_save_percentage,
+      games_sch.home_gk_name, games_sch.home_gk_id, games_sch.home_gk_games, games_sch.home_gk_wins,
+      games_sch.home_gk_losses, games_sch.home_gk_ot, games_sch.home_gk_ties, games_sch.home_gk_shutouts,
+      games_sch.home_gk_saves, games_sch.home_gk_gaa, games_sch.home_gk_save_percentage
+    ];
+  });
 
-  // Create a list of lists that represents the table:
-  var table = games_sch.map(function(games_sch){
-    return [games_sch.process_dt, games_sch.game_date, games_sch.game_date_utc, games_sch.game_pk, games_sch.game_type, games_sch.game_type_desc, games_sch.game_season,games_sch.away_team_id, games_sch.away_team_name, games_sch.away_team_score, games_sch.home_team_id, games_sch.home_team_name, games_sch.home_team_score, games_sch.away_gk_name, games_sch.away_gk_id, games_sch.away_gk_games, games_sch.away_gk_wins, games_sch.away_gk_losses, games_sch.away_gk_ot, games_sch.away_gk_ties, games_sch.away_gk_shutouts, games_sch.away_gk_saves, games_sch.away_gk_gaa, games_sch.away_gk_save_percentage, games_sch.home_gk_name, games_sch.home_gk_id, games_sch.home_gk_games, games_sch.home_gk_wins, games_sch.home_gk_losses, games_sch.home_gk_ot, games_sch.home_gk_ties, games_sch.home_gk_shutouts, games_sch.home_gk_saves, games_sch.home_gk_gaa, games_sch.home_gk_save_percentage] 
-  })
-
-  // Insert values into Sheet and remove dupplicates just in case
   range.setValues(table);
-  Logger.log(sheet.getLastRow())
 };
 
-function getOdds_v1(){
-  // Connect to API
-  var api_key = 'accd61f86fmshb0388fa5577e465p1d7388jsn2d2e5cf0a3aa';
-  var market = 'h2h,spreads,totals';
-  var regions = 'us'
+function getOdds_v1() {
+  // API details
+  const api_key = NHLConfigs.getApiKey();
+  const market = 'h2h,spreads,totals';
+  const regions = 'us';
+  
+  // Construct the API URL
+  const url = `https://odds.p.rapidapi.com/v4/sports/icehockey_nhl/odds?regions=${regions}&oddsFormat=decimal&markets=${market}&dateFormat=iso`;
 
-  var url = "https://odds.p.rapidapi.com/v4/sports/icehockey_nhl/odds" + '?regions=' + regions + '&oddsFormat=decimal' + '&markets=' + market + '&dateFormat=iso'
-  var querystring = {
-    "regions":"us",
-    "oddsFormat":"decimal",
-    "markets":"h2h,spreads,totals",
-    "dateFormat":"iso"
-  };
-  var headers = {
-    "X-RapidAPI-Key": "accd61f86fmshb0388fa5577e465p1d7388jsn2d2e5cf0a3aa",
+  // Set API headers
+  const headers = {
+    "X-RapidAPI-Key": api_key,
     "X-RapidAPI-Host": "odds.p.rapidapi.com"
   };
-  var options = {
+
+  // Configure API request options
+  const options = {
     method: "GET",
     headers: headers
   };
 
-  var response = UrlFetchApp.fetch(url,options);
-  var json = response.getContentText();
-  var data = JSON.parse(json);
+  // Fetch odds data from the API
+  const response = UrlFetchApp.fetch(url, options);
+  const json = response.getContentText();
+  const data = JSON.parse(json);
 
-  //  Extract odd data for some bookmakers
-  var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
-  var next_games_odds = [];
-  var bookmakers = ['SugarHouse','BetUS','Unibet','Betrivers','William Hill (US)','DraftKings','FanDuel','Bovada','FOX Bet']
+  // Prepare variables
+  const process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
+  const next_games_odds = [];
+  const bookmakers = ['SugarHouse', 'BetUS', 'Unibet', 'Betrivers', 'William Hill (US)', 'DraftKings', 'FanDuel', 'Bovada', 'FOX Bet'];
 
-  for (var i in data){
-    var game_time = data[i]['commence_time'];
-    var home_team = data[i]['home_team'];
-    var away_team = data[i]['away_team'];
+  // Extract relevant odds data
+  for (const gameData of data) {
+    const game_time = gameData['commence_time'];
+    const home_team = gameData['home_team'];
+    const away_team = gameData['away_team'];
 
-    for (var j in data[i]['bookmakers']){
-      var mk = data[i]['bookmakers'][j];
+    for (const bookmaker of gameData['bookmakers']) {
+      const mkTitle = bookmaker['title'];
 
-      if (bookmakers.indexOf(mk['title']) != -1){
-        if (mk['markets'].length >= 3){
-          var game = {
-            'process_dt': process_dt,
-            'game_time': game_time,
-            'home_team': home_team,
-            'away_team': away_team,
-            'bookmaker_name': mk['title'],
-            'h2h_home_price': mk['markets'][0]['outcomes'][0]['price'],
-            'h2h_away_price': mk['markets'][0]['outcomes'][1]['price'],
-            'spreads_home_price': mk['markets'][1]['outcomes'][0]['price'],
-            'spreads_home_points': mk['markets'][1]['outcomes'][0]['point'],
-            'spreads_away_price': mk['markets'][1]['outcomes'][1]['price'],
-            'spreads_away_points': mk['markets'][1]['outcomes'][1]['point'],
-            'totals_over_price': mk['markets'][2]['outcomes'][0]['price'],
-            'totals_over_points': mk['markets'][2]['outcomes'][0]['point'],
-            'totals_under_price': mk['markets'][2]['outcomes'][1]['price'],
-            'totals_under_points': mk['markets'][2]['outcomes'][1]['point'],
-          }
-          next_games_odds.push(game)
+      if (bookmakers.includes(mkTitle) && bookmaker['markets'].length >= 3) {
+        const marketData = bookmaker['markets'];
+
+        const game = {
+          'process_dt': process_dt,
+          'game_time': game_time,
+          'home_team': home_team,
+          'away_team': away_team,
+          'bookmaker_name': mkTitle,
+          'h2h_home_price': marketData[0]['outcomes'][0]['price'],
+          'h2h_away_price': marketData[0]['outcomes'][1]['price'],
+          'spreads_home_price': marketData[1]['outcomes'][0]['price'],
+          'spreads_home_points': marketData[1]['outcomes'][0]['point'],
+          'spreads_away_price': marketData[1]['outcomes'][1]['price'],
+          'spreads_away_points': marketData[1]['outcomes'][1]['point'],
+          'totals_over_price': marketData[2]['outcomes'][0]['price'],
+          'totals_over_points': marketData[2]['outcomes'][0]['point'],
+          'totals_under_price': marketData[2]['outcomes'][1]['price'],
+          'totals_under_points': marketData[2]['outcomes'][1]['point']
         };
-      };
 
-    };
+        next_games_odds.push(game);
+      }
+    }
+  }
 
-  };
+  // Spreadsheet details
+  const spreadsheet_id = NHLConfigs.spreadsheetID();
+  const odds_sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("odds_1");
+  const cols = Object.keys(next_games_odds[0]).length;
+  const rorw = next_games_odds.length;
 
-  //  Add it to Google Sheets
-  var spreadsheet_id = '1a2NpAaysxopZlw93Nwbx9rQxD-GMbV3_vbeAZbZxCYc';
-  var odds_sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("odds_1");
-
-  // Get number of rows and columns I need
-  var cols = Object.keys(next_games_odds[0]).length;
-  var rorw = next_games_odds.length;
-
-  // Delete Previous Information (just to be sure)
-  var del_range = odds_sheet.getRange(2,1,300,20);
+  // Clear previous information
+  const del_range = odds_sheet.getRange(2, 1, 300, 20);
   del_range.clear();
 
-  // Get a range for the second row
-  var range = odds_sheet.getRange(2,1,rorw,cols);
+  // Get a range for new data
+  const range = odds_sheet.getRange(2, 1, rorw, cols);
 
-  // Create a list of lists that represents the table:
-  var table = next_games_odds.map(function(next_games_odds){
-    return [next_games_odds.process_dt, next_games_odds.game_time, next_games_odds.home_team, next_games_odds.away_team, next_games_odds.bookmaker_name, next_games_odds.h2h_home_price, next_games_odds.h2h_away_price, next_games_odds.spreads_home_points, next_games_odds.spreads_home_price, next_games_odds.spreads_away_points, next_games_odds.spreads_away_price, next_games_odds.totals_over_points, next_games_odds.totals_over_price, next_games_odds.totals_under_points, next_games_odds.totals_under_price] 
-  })
+  // Prepare data for insertion
+  const table = next_games_odds.map(function(gameData) {
+    return [
+      gameData.process_dt, gameData.game_time, gameData.home_team, gameData.away_team,
+      gameData.bookmaker_name, gameData.h2h_home_price, gameData.h2h_away_price,
+      gameData.spreads_home_points, gameData.spreads_home_price, gameData.spreads_away_points,
+      gameData.spreads_away_price, gameData.totals_over_points, gameData.totals_over_price,
+      gameData.totals_under_points, gameData.totals_under_price
+    ];
+  });
 
-  // Insert values into Sheet
-  range.setValues(table)
-};
+  // Insert values into the spreadsheet
+  range.setValues(table);
+}
