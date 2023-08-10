@@ -1,65 +1,65 @@
 function updateTeamsAndInjuries(){
-    var spreadsheet_id = NHLConfigs.spreadsheetID();
- 
-    // Update Teams Data
-    var teams = getTeamsData();
-    var teams_sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("teams");
-  
-    // Fix some format issues
-    teams.forEach(function(dict){
-      dict.ptPctg = dict.ptPctg / 100
-      dict.powerPlayPercentage = dict.powerPlayPercentage / 100
-      dict.penaltyKillPercentage = dict.penaltyKillPercentage / 100
-      dict.faceOffWinPercentage = dict.faceOffWinPercentage / 100
-      dict.shootingPctg = dict.shootingPctg / 100
-      //dict.setType({})
-    });
-  
-    // Get number of rows and columns I need
-    var t_cols = Object.keys(teams[0]).length;
-    var t_rorw = teams.length;
-  
-    // Delete Previous Information (just to be sure)
-    var t_del_range = teams_sheet.getRange(2,1,70,70);
-    t_del_range.clear();
-  
-    // Get a range for the second row
-    var t_range = teams_sheet.getRange(2,1,t_rorw,t_cols);
-  
-    // Create a list of lists that represents the table:
-    var t_table = teams.map(function(teams){
-      return [teams.process_dt, teams.team_id, teams.team_name, teams.team_abbreviation, teams.division_id, teams.division_name, teams.division_abbreviation, teams.conference_id, teams.conference_name, teams.gamesPlayed, teams.wins, teams.losses, teams.ot, teams.pts, teams.ptPctg, teams.goalsPerGame, teams.goalsAgainstPerGame, teams.evGGARatio, teams.powerPlayPercentage, teams.powerPlayGoals, teams.powerPlayGoalsAgainst, teams.powerPlayOpportunities, teams.penaltyKillPercentage, teams.shotsPerGame, teams.shotsAllowed, teams.winScoreFirst, teams.winOppScoreFirst, teams.winLeadFirstPer, teams.winLeadSecondPer, teams.winOutshootOpp, teams.winOutshotByOpp, teams.faceOffsTaken, teams.faceOffsWon, teams.faceOffsLost, teams.faceOffWinPercentage, teams.shootingPctg, teams.savePctg, teams.league_record_wins, teams.league_record_losses, teams.league_record_ot, teams.regulationWins, teams.goalsAgainst, teams.goalsScored, teams.league_rank, teams.league_l10_rank, teams.divisionRank, teams.division_l10_rank, teams.conferenceRank, teams.conference_l10_rank, teams.streak_type, teams.streak_number, teams.streak_code, teams.pim] 
-    })
-  
-    // Insert values into Sheet
-    t_range.setValues(t_table)
-  
-    var team_finish_milestone = new Date();
-    Logger.log('Finish Team Update');
-    Logger.log(team_finish_milestone);
-    Utilities.sleep(1000); // Pause for 1 second
-  
-    // Update Injuries
-    var injured_players = getInjuredPlayers();
-    var injuries_sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("current_injuries");
-    var in_col = Object.keys(injured_players[0]).length
-    var in_rows = injured_players.length 
-  
-    // Delete Previous Information (just to be sure)
-    var i_del_range = injuries_sheet.getRange(2,1,500,10);
-    i_del_range.clear();
-  
-    // Get a range for the second row
-    var i_range = injuries_sheet.getRange(2,1,in_rows,in_col);
-  
-    // Create a list of lists that represents the table:
-    var inj_table = injured_players.map(function(injured_players){
-      return [injured_players.process_dt, injured_players.team_name, injured_players.player_name, injured_players.player_position, injured_players.injury_name, injured_players.injury_status, injured_players.last_update] 
-    });
-  
-    // Insert values into Sheet
-    i_range.setValues(inj_table);
-  }
+  var spreadsheet_id = NHLConfigs.spreadsheetID();
+
+  // Update Teams Data
+  var teams = getTeamsData();
+  var teams_sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("teams");
+
+  // Fix some format issues
+  teams.forEach(function(dict){
+    dict.ptPctg = dict.ptPctg / 100
+    dict.powerPlayPercentage = dict.powerPlayPercentage / 100
+    dict.penaltyKillPercentage = dict.penaltyKillPercentage / 100
+    dict.faceOffWinPercentage = dict.faceOffWinPercentage / 100
+    dict.shootingPctg = dict.shootingPctg / 100
+    //dict.setType({})
+  });
+
+  // Get number of rows and columns I need
+  var t_cols = Object.keys(teams[0]).length;
+  var t_rorw = teams.length;
+
+  // Delete Previous Information (just to be sure)
+  var t_del_range = teams_sheet.getRange(2,1,70,70);
+  t_del_range.clear();
+
+  // Get a range for the second row
+  var t_range = teams_sheet.getRange(2,1,t_rorw,t_cols);
+
+  // Create a list of lists that represents the table:
+  var t_table = teams.map(function(teams){
+    return [teams.process_dt, teams.team_id, teams.team_name, teams.team_abbreviation, teams.division_id, teams.division_name, teams.division_abbreviation, teams.conference_id, teams.conference_name, teams.gamesPlayed, teams.wins, teams.losses, teams.ot, teams.pts, teams.ptPctg, teams.goalsPerGame, teams.goalsAgainstPerGame, teams.evGGARatio, teams.powerPlayPercentage, teams.powerPlayGoals, teams.powerPlayGoalsAgainst, teams.powerPlayOpportunities, teams.penaltyKillPercentage, teams.shotsPerGame, teams.shotsAllowed, teams.winScoreFirst, teams.winOppScoreFirst, teams.winLeadFirstPer, teams.winLeadSecondPer, teams.winOutshootOpp, teams.winOutshotByOpp, teams.faceOffsTaken, teams.faceOffsWon, teams.faceOffsLost, teams.faceOffWinPercentage, teams.shootingPctg, teams.savePctg, teams.league_record_wins, teams.league_record_losses, teams.league_record_ot, teams.regulationWins, teams.goalsAgainst, teams.goalsScored, teams.league_rank, teams.league_l10_rank, teams.divisionRank, teams.division_l10_rank, teams.conferenceRank, teams.conference_l10_rank, teams.streak_type, teams.streak_number, teams.streak_code, teams.pim] 
+  })
+
+  // Insert values into Sheet
+  t_range.setValues(t_table)
+
+  var team_finish_milestone = new Date();
+  Logger.log('Finish Team Update');
+  Logger.log(team_finish_milestone);
+  Utilities.sleep(1000); // Pause for 1 second
+
+  // Update Injuries
+  var injured_players = getInjuredPlayers();
+  var injuries_sheet = SpreadsheetApp.openById(spreadsheet_id).getSheetByName("current_injuries");
+  var in_col = Object.keys(injured_players[0]).length
+  var in_rows = injured_players.length 
+
+  // Delete Previous Information (just to be sure)
+  var i_del_range = injuries_sheet.getRange(2,1,500,10);
+  i_del_range.clear();
+
+  // Get a range for the second row
+  var i_range = injuries_sheet.getRange(2,1,in_rows,in_col);
+
+  // Create a list of lists that represents the table:
+  var inj_table = injured_players.map(function(injured_players){
+    return [injured_players.process_dt, injured_players.team_name, injured_players.player_name, injured_players.player_position, injured_players.injury_name, injured_players.injury_status, injured_players.last_update] 
+  });
+
+  // Insert values into Sheet
+  i_range.setValues(inj_table);
+};
   
 function getInjuredPlayers() {
   var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
@@ -148,7 +148,6 @@ function getInjuredPlayers() {
   return injured_players;
 };
   
-
 function getTeamsData() {
   var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
   var url = 'https://statsapi.web.nhl.com';
@@ -263,7 +262,7 @@ function getTeamsData() {
   });
 
   return teams;
-}
+};
 
 function startingGoaliesScrap() {
   var process_dt = Utilities.formatDate(new Date(), "GMT", "YYYY-MM-dd");
@@ -315,7 +314,6 @@ function startingGoaliesScrap() {
 
   return gk_data;
 };
-
 
 function gamesSchedule() {
   const gk_scrap = startingGoaliesScrap();
@@ -808,4 +806,4 @@ function getOdds_v1() {
 
   // Insert values into the spreadsheet
   range.setValues(table);
-}
+};
